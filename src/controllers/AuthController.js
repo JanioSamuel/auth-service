@@ -1,20 +1,34 @@
 const producer = require('../workers/Producer');
 const utils = require('../util/Utils');
-const consumer = require('../workers/Consumer');
 const queueActions = require('../util/QueueActions');
 const jwt = require('jsonwebtoken');
 
 async function store(req, res) {
+  const username = req.body.username;
+  const password = await utils.hashPassword(req.body.password);
 
+  await producer.sendToQueue('relational.db.service', { username, password, action: 'signup' });
+  return queueActions.consume('auth.service', message => {
+    if (!JSON.parse(message.content)) {
+      throw new Error('User not found');
+    }
+    const content = JSON.parse(message.content);
+    if (content.action === 'signup') {
+      return res.json({ code: 200, message: `User ${content.user.username} successfully created.` });
+    }
+    if (content.action === 'error') {
+      return res.json({ code: 400, message: content.message });
+    }
+  })
 }
 
 async function index(req, res) {
   const username = req.body.username;
   const password = req.body.password;
 
-  await producer.sendToQueue("relational.db.service", { username });
+  await producer.sendToQueue('relational.db.service', { username });
 
-  return queueActions.consume('auth.service.ret', async message => {
+  return queueActions.consume('auth.service', async message => {
     if (!JSON.parse(message.content)) {
       throw new Error('User not found');
     }
