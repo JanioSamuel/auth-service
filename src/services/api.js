@@ -1,7 +1,8 @@
 const axios = require('axios');
+require('dotenv-safe').config();
 
 const api = axios.create({
-  baseURL: 'http://localhost:3003'
+  baseURL: process.env.RELATIONAL_DB_SERVICE_URL
 });
 
 module.exports = api;

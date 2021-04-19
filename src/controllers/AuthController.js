@@ -37,7 +37,12 @@ async function index(req, res) {
   return res.json({ message: 'Invalid username or password.' })
 }
 
+async function logout(req, res) {
+  return res.json({ auth: false, token: null });
+}
+
 module.exports = {
   store,
-  index
+  index,
+  logout
 }
