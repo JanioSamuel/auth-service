@@ -1,52 +1,40 @@
-const producer = require('../workers/Producer');
 const utils = require('../util/Utils');
-const queueActions = require('../util/QueueActions');
 const jwt = require('jsonwebtoken');
+const api = require('../services/api');
 
 async function store(req, res) {
   const username = req.body.username;
   const password = await utils.hashPassword(req.body.password);
 
-  await producer.sendToQueue('relational.db.service', { username, password, action: 'signup' });
-  return queueActions.consume('auth.service', message => {
-    if (!JSON.parse(message.content)) {
-      throw new Error('User not found');
-    }
-    const content = JSON.parse(message.content);
-    if (content.action === 'signup') {
-      return res.json({ code: 200, message: `User ${content.user.username} successfully created.` });
-    }
-    if (content.action === 'error') {
-      return res.json({ code: 400, message: content.message });
-    }
-  })
+  const response = await api.post('/signup', { username, password });
+  if (response.data.action === 'signup') {
+    return res.json({ code: 200, message: `User ${response.data.user.username} successfully created.` });
+  }
+  if (response.data.action === 'error') {
+    return res.json({ code: 400, message: response.data.message });
+  }
 }
 
 async function index(req, res) {
   const username = req.body.username;
   const password = req.body.password;
 
-  await producer.sendToQueue('relational.db.service', { username });
+  const response = await api.post('/login', { username })
 
-  return queueActions.consume('auth.service', async message => {
-    if (!JSON.parse(message.content)) {
-      throw new Error('User not found');
+  const isSamePassword = await utils.comparePassword(password, response.data.password);
+  if (isSamePassword) {
+    const { id } = response.data;
+    const token = await jwt.sign({ id }, process.env.SECRET, {
+      expiresIn: 18000
+    });
+    const data = {
+      token: token,
+      username: response.data.username
     }
+    return res.json(data);
+  }
 
-    const content = JSON.parse(message.content);
-
-    const isSamePassword = await utils.comparePassword(password, content.password);
-    if (isSamePassword) {
-      const { id } = content;
-      const token = await jwt.sign({ id }, process.env.SECRET, {
-        expiresIn: 18000
-      });
-
-      return res.json({ token })
-    }
-
-    return res.json({ message: 'Invalid username or password.' })
-  });
+  return res.json({ message: 'Invalid username or password.' })
 }
 
 module.exports = {
