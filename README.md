@@ -3,7 +3,7 @@
 - Responsible for authenticate user, create account and logout.
 
 ```
-Parameters:
+Environment Variables:
 SECRET= A word to encrypt and decrypt your password
 RELATIONAL_DB_SERVICE_URL= Url + port to relational database service
 ```
@@ -19,4 +19,24 @@ And
 or
 `npm run dev`
 
-After this, run the other projects.
+#### Endpoints
+- /signup
+POST
+Parameters:
+    - username: string
+    - password: string
+Return:
+    - code: numeric
+    - message: string
+
+- /login
+Parameters:
+    - username: string
+    - password: string
+Return:
+    - token: string
+    - username: string
+
+- /logout
+Return:
+    - token: null
